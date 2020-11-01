@@ -252,3 +252,156 @@ public class UdpWatcher {
 }
 ````
 
+### 五、udp模拟在线聊天
+
+#### 1、使用多线程创建一个消息发送的服务端
+````java
+/**
+ * udp通信消息发送服务进程
+ */
+public class UdpSenderServer implements Runnable{
+
+    private DatagramSocket datagramSocket = null;
+    private BufferedReader bufferedReader = null;
+    private int toPort;
+    private String toIp;
+    private String name;
+
+    public UdpSenderServer(int toPort, String toIp,String name) {
+        this.toPort = toPort;
+        this.toIp = toIp;
+        this.name = name;
+        try {
+            datagramSocket = new DatagramSocket();
+            // 得到控制台输入流
+            bufferedReader = new BufferedReader(new InputStreamReader(System.in));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void run() {
+        while (true){
+            try {
+                // 转换为控制台输入字符串
+                String inputData = bufferedReader.readLine();
+                DatagramPacket packet = new DatagramPacket(inputData.getBytes(),
+                        0,inputData.getBytes().length,new InetSocketAddress(toIp,toPort));
+
+                datagramSocket.send(packet);
+                if ("bye".equals(inputData)){
+                    break;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        try {
+            bufferedReader.close();
+            datagramSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+}
+````
+
+#### 2、使用多线程创建一个消息接收的服务端
+````java
+/**
+ * udp通信方式获取信息
+ */
+public class UdpObtainServer implements Runnable{
+
+    private DatagramSocket datagramSocket = null;
+
+    private int port;
+    private String name;
+
+    public UdpObtainServer(int port, String name) {
+        this.port = port;
+        this.name = name;
+        try {
+            datagramSocket = new DatagramSocket(port);
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void run() {
+        while (true){
+            byte[] buffer = new byte[1024];
+            DatagramPacket packet = new DatagramPacket(buffer,0,buffer.length);
+
+            try {
+                datagramSocket.receive(packet);
+                String data = new String(packet.getData(),0,buffer.length);
+                System.out.println(name+" : "+data);
+                if ("bye".equals(data)){
+                    break;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        datagramSocket.close();
+
+    }
+}
+````
+
+#### 3、创建实例分别启动实例的消息接收和发送
+````java
+public class UdpStudentTest {
+    public static void main(String[] args) {
+        UdpSenderServer udpSenderServer = new UdpSenderServer(8888,"127.0.0.1","学生");
+        UdpObtainServer udpObtainServer = new UdpObtainServer(9989,"学生");
+
+        //启动学生端消息发送服务进程
+        new Thread(udpSenderServer).start();
+        //启动学生端消息接收服务进程
+        new Thread(udpObtainServer).start();
+
+    }
+}
+
+
+public class UdpTeacherTest {
+    public static void main(String[] args) {
+        UdpSenderServer udpSenderServer = new UdpSenderServer(9989,"127.0.0.1","老师");
+        UdpObtainServer udpObtainServer = new UdpObtainServer(8888,"老师");
+
+        //启动老师端消息发送进程服务
+        new Thread(udpSenderServer).start();
+        //启动老师端消息接收进程服务
+        new Thread(udpObtainServer).start();
+    }
+}
+````
+### 六、通过url下载网络资源
+````java
+/**
+ * 通过网络地址下载文件（视频、音乐、文件）
+ */
+public class FileDownByUrl {
+    public static void main(String[] args) throws Exception {
+        URL url = new URL("https://p4.music.126.net/YeFiNgHX3XctdJRbsmuICQ==/109951164250805104.jpg?param=50y50");
+        URLConnection urlConnection = url.openConnection();
+        InputStream inputStream = urlConnection.getInputStream();
+
+        FileOutputStream fos = new FileOutputStream(new File("incredible.jpg"));
+        byte[] buffer = new byte[1024];
+        int len;
+        while ((len = inputStream.read(buffer)) != -1){
+            fos.write(buffer,0,len);
+        }
+        fos.close();
+        inputStream.close();
+
+    }
+}
+````
